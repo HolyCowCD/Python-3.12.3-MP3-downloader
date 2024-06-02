@@ -10,7 +10,7 @@ import requests  # for downloading the thumbnail
 init(autoreset=True)# Initialize colorama or whatever
 save = r"Mp3Downloads"  # this is where the files get saved
 
-if not os.path.exists(save):# makes path if not present
+if not os.path.exists(save):# makes path if 'save' folder is not found
     os.makedirs(save)
     
 def grint(text): 
