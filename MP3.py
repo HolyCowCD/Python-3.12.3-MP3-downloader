@@ -7,14 +7,15 @@ from moviepy.editor import VideoFileClip  # for conversion
 import os
 import requests  # for downloading the thumbnail
 
-# https://music.youtube.com/watch?v=jY5E2kyr5hc&si=bQnKDRT1EALNWPeX
-
 init(autoreset=True)# Initialize colorama or whatever
-save = r"c:\Users\uujja\Downloads"  # this is where the files get saved
+save = r"Mp3Downloads"  # this is where the files get saved
 
-def grint(text):
+if not os.path.exists(save):# makes path if not present
+    os.makedirs(save)
+    
+def grint(text): 
     print(Fore.GREEN + text + Style.RESET_ALL)
-
+# these are for styling 
 def print_info(label, info):
     print(Fore.CYAN + label + ": " + Style.BRIGHT + Fore.WHITE + str(info) + Style.RESET_ALL)
 
