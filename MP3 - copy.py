@@ -1,3 +1,8 @@
+"""
+this one is here so i can add playlist downloader and incase
+something goes wrong the main mp3.py will be fine :+1:
+"""
+
 from colorama import Style, Fore, init  # for color
 from pytube import YouTube  # for downloading from YouTube
 from mutagen.id3 import ID3, ID3NoHeaderError, TIT2, TPE1, TALB, APIC  # for metadata
