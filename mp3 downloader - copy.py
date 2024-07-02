@@ -79,7 +79,14 @@ def add_cover():#? Adds the album cover image
                 data=img_file.read() 
             )
         )
+        
+    audio.save(v2_version=3)  # saving in ID3v2.3 format, whatever that means 
+    grint("thumbnail added :)")
 
+def clean(): #? removes the non-mp3 files
+    os.remove(thumbnail_path)  # remove the downloaded thumbnail file
+    os.remove(mp4_path)  # remove the downloaded mp4 file
+    grint("Clean up finished")
 
 while True:  # Loops until the program is shut
     try: 
@@ -94,22 +101,10 @@ while True:  # Loops until the program is shut
         get_thumbnail()
         
         add_cover()
-
-        # Save the audio with the new tags
-        audio.save(v2_version=3)  # saving in ID3v2.3 format, whatever that means 
-        grint("Metadata and thumbnail added :)")
-        grint("MP3 Downloaded!")
-
-        # Clean up
-        os.remove(thumbnail_path)  # remove the downloaded thumbnail file
-        os.remove(mp4_path)  # remove the downloaded mp4 file
-        grint("Clean up finished")
-
+        
+        clean()
     except Exception as e:
         print(Fore.RED + f"Something went wrong!: {e}")  # not very good :(
         print(traceback.format_exc() + Style.RESET_ALL)  # this gives more info
 
     clear()
-    
-    
-    
