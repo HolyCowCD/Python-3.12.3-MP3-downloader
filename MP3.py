@@ -5,6 +5,7 @@ from mutagen.mp3 import MP3
 import traceback  # for error handling
 from moviepy.editor import VideoFileClip  # for conversion
 import os
+from PIL import Image
 import requests  # for downloading the thumbnail
 
 init(autoreset=True)  # Initialize colorama
@@ -19,8 +20,8 @@ def print_info(label, info):
 def download_video(url, output_path):
     ydl_opts = {
         'format': 'best',
-        'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'), # no clue what this does ask gpt lol
-        'quiet': True # same with this line lol
+        'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'), # no clue what dis does :/
+        'quiet': True # also no clue lol
     }
     with YoutubeDL(ydl_opts) as ydl:
         info_dict = ydl.extract_info(url, download=True)
@@ -31,7 +32,7 @@ while True:  # Loops until the program is shut
         yt_link = input(Fore.WHITE + "Enter YouTube link: " + Style.RESET_ALL)
         video_info = download_video(yt_link, save)
         
-        # just here incase i need to use later
+        # Just here incase I need to use later
         title = video_info.get('title')
         author = video_info.get('uploader')
         views = video_info.get('view_count')
@@ -67,14 +68,25 @@ while True:  # Loops until the program is shut
         audio.save()
 
         # Download the thumbnail image
-        thumbnail_path = os.path.join(save, "thumbnail")  
+        thumbnail_png_path = os.path.join(save, "thumbnail.png")
+        thumbnail_jpg_path = os.path.join(save, "thumbnail.jpg")
+
         response = requests.get(thumbnail_url)
-        with open(thumbnail_path, 'wb') as file:
+        with open(thumbnail_png_path, 'wb') as file:
             file.write(response.content)
+        
+        try:
+            with Image.open(thumbnail_png_path) as img:
+                img = img.convert("RGB")
+                img.save(thumbnail_jpg_path, "JPEG")
+            print(f"Thumbnail converted to {thumbnail_jpg_path}")
+        except Exception as e:
+            print("An error occurred while converting the thumbnail:")
+            traceback.print_exc()
 
         # Add the album cover image
         audio = MP3(mp3_path, ID3=ID3)
-        with open(thumbnail_path, 'rb') as img_file:
+        with open(thumbnail_jpg_path, 'rb') as img_file:
             audio.tags.add(
                 APIC(
                     encoding=3,
@@ -92,6 +104,8 @@ while True:  # Loops until the program is shut
 
         # Clean up
         os.remove(mp4_path)
+        os.remove(thumbnail_png_path)
+        os.remove(thumbnail_jpg_path)
         grint("Clean up finished")
 
     except Exception as e:
