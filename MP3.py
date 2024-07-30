@@ -7,9 +7,12 @@ from moviepy.editor import VideoFileClip  # for conversion
 import os
 from PIL import Image
 import requests  # for downloading the thumbnail
+import time
 
 init(autoreset=True)  # Initialize colorama
 save = r"c:\Users\uujja\Downloads"  # this is where the files get saved
+links = [] #? stores all the links
+errors = [] #? stores all the links that got an error
 
 def grint(text):
     print(Fore.GREEN + text + Style.RESET_ALL)
@@ -27,10 +30,9 @@ def download_video(url, output_path):
         info_dict = ydl.extract_info(url, download=True)
     return info_dict
 
-while True:  # Loops until the program is shut
+def mp3_download(link):
     try:
-        yt_link = input(Fore.WHITE + "Enter YouTube link: " + Style.RESET_ALL)
-        video_info = download_video(yt_link, save)
+        video_info = download_video(link, save)
         
         # Just here incase I need to use later
         title = video_info.get('title')
@@ -108,8 +110,36 @@ while True:  # Loops until the program is shut
         os.remove(thumbnail_jpg_path)
         grint("Clean up finished")
 
+        if link in errors:
+            errors.remove(link)
+
     except Exception as e:
+        errors.append(link)
+
         print(Fore.RED + f"Something went wrong!: {e}")
         print(traceback.format_exc() + Style.RESET_ALL)
         input("Press enter to continue!")
     os.system('cls')
+
+while True: #? keeps addings all the links until you done
+    #Todo: make it creast the mp3 file straight up and then write to it
+    print("Enter nothing to continue")
+    yt_link = input(Fore.WHITE + "Enter YouTube link: " + Style.RESET_ALL)
+
+    if len(yt_link) == 0: 
+        break
+    elif yt_link in links:
+        print("Link has already been given!")  
+        time.sleep(0.5)
+    else:
+        links.append(yt_link)
+
+    os.system('cls')
+
+for link in links:  # Loops until the program is shut
+    mp3_download(link)
+
+input("Press enter to go through the links thats had issues, exit to exit")
+
+for link in errors: # goes through the errors again just in case
+    mp3_download(link)
