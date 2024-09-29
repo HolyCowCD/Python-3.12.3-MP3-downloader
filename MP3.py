@@ -1,92 +1,136 @@
-from colorama import Style, Fore, init  # for color
-from pytube import YouTube  # for downloading from YouTube
-from mutagen.id3 import ID3, ID3NoHeaderError, TIT2, TPE1, TALB, APIC  # for metadata
-from mutagen.mp3 import MP3
-import traceback  # for error handling
-from moviepy.editor import VideoFileClip  # for conversion
 import os
-import requests  # for downloading the thumbnail
+from yt_dlp import YoutubeDL
+import requests
+from PIL import Image
+import traceback
+from mutagen.id3 import ID3, APIC 
+from mutagen.mp3 import MP3
+from colorama import Fore, Style, init
+import time
+from pathlib import Path
 
-# https://music.youtube.com/watch?v=jY5E2kyr5hc&si=bQnKDRT1EALNWPeX
 
-init(autoreset=True)# Initialize colorama or whatever
-save = r"c:\Users\uujja\Downloads"  # this is where the files get saved
+init(autoreset=True)  # Initialize colorama
+save = Path(r"c:/Users/uujja/Downloads")
 
 def grint(text):
+    """Output grean text"""
     print(Fore.GREEN + text + Style.RESET_ALL)
 
 def print_info(label, info):
-    print(Fore.CYAN + label + ": " + Style.BRIGHT + Fore.WHITE + str(info) + Style.RESET_ALL)
+    """
+    outputs --> cyan label: white text
+    """
+    print(Fore.CYAN + label + ": " + Style.BRIGHT + Fore.WHITE + info + Style.RESET_ALL)
 
-while True:  # Loops until the program is shut
+def clear_screen():
+    """clears the console"""
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def download(link):
+    """Download a video using its YouTube Link"""
     try:
-        yt_link = input(Fore.WHITE + "Enter YouTube link: " + Style.RESET_ALL)
-        yt = YouTube(yt_link)
-        print_info("Title", yt.title)
-        print_info("Author", yt.author)
-        print_info("Views", yt.views)
-        print_info("Length", yt.length)
+        ydl_opts = {
+            'format': 'bestaudio/best',  # Only download the best audio
+            'outtmpl': str(save / '%(title)s.%(ext)s'),  # Template = title.extension
+            'quiet': False,  # Shows whats happening, setting to True will hide everything but thats boring
+            'postprocessors': [
+                {
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3', 
+                },
+                {
+                    'key': 'FFmpegMetadata',  
+                    'add_metadata': True,
+                }
+            ],
+            'verbose': True  # I think it shows more stuff :O
+        }
 
-        yd = yt.streams.get_lowest_resolution()  
-        mp4_path = yd.download(output_path=save)
-        grint("Mp4 downloaded with no metadata!")
+        with YoutubeDL(ydl_opts) as ydl:
+            mp3_info = ydl.extract_info(link, download=True)
+            mp3_path = Path(ydl.prepare_filename(mp3_info)).with_suffix('.mp3')
 
-        # Converting to mp3
-        mp3_filename = yt.title + ".mp3"  # for renaming it
-        mp3_path = os.path.join(save, mp3_filename)  # download a copy at 'save' as a .mp3
-        video_clip = VideoFileClip(mp4_path)  # this is to make a variable
-        video_clip.audio.write_audiofile(mp3_path)  # actually downloads
-        video_clip.close()  # stops the conversion
-        grint("MP3 ready for metadata :)")
+        thumbnail_url = mp3_info.get('thumbnail')
 
-        # Adding metadata
-        try:  # using the advanced format (more verstile i think)
-            audio = ID3(mp3_path)
-        except ID3NoHeaderError:
-            audio = ID3()
+        if thumbnail_url:
+            try:
+                # Download and convert the thumbnail image
+                png_path = save / "thumbnail.png"
+                jpg_path = save / "thumbnail.jpg"
 
-        audio.add(TIT2(encoding=3, text=yt.title))  # Title
-        audio.add(TPE1(encoding=3, text=yt.author))  # Artist
-        audio.add(TALB(encoding=3, text=yt.title))  # Album
+                response = requests.get(thumbnail_url)
+                with open(png_path, 'wb') as file:
+                    file.write(response.content)
+                
+                with Image.open(png_path) as img:
+                    img = img.convert("RGB")
+                    img.save(jpg_path, "JPEG")
+                grint(f"Thumbnail converted to {jpg_path}")
 
-        audio.save() # save the tags?
+                # Add cover image and save
+                audio = MP3(mp3_path, ID3=ID3)
+                with open(jpg_path, 'rb') as img_file:
+                    audio.tags.add(
+                        APIC(
+                            encoding=3,
+                            mime="image/jpeg",
+                            type=3,
+                            desc='Cover',
+                            data=img_file.read()
+                        )
+                    )
+                audio.save(v2_version=3)
+                grint(f"Added album art to {mp3_path}")
 
-        # Download the thumbnail image
-        thumbnail_path = os.path.join(save, "thumbnail.png")  # empty image file
-        response = requests.get(yt.thumbnail_url)  # writes to empty image file
-        with open(thumbnail_path, 'wb') as file:
-            file.write(response.content)
+                # Clean up image files
+                png_path.unlink()
+                jpg_path.unlink()
 
-        # Add the album cover image
-        audio = MP3(mp3_path, ID3=ID3)
-        with open(thumbnail_path, 'rb') as img_file:
-            audio.tags.add(
-                APIC(
-                    encoding=3,  # utf-8 cus 2^3 = 8
-                    mime="image/png",  # uses png, might be an issue if someone else is a png
-                    type=3,  # 3 = cover image :)
-                    desc='Cover',
-                    data=img_file.read() 
-                )
-            )
-
-        # Save the audio with the new tags
-        audio.save(v2_version=3)  # saving in ID3v2.3 format, whatever that means 
-        grint("Metadata and thumbnail added :)")
-        grint("MP3 Downloaded!")
-
-        # Clean up
-        os.remove(thumbnail_path)  
-        os.remove(mp4_path) 
-        grint("Clean up finished")
+            except Exception as e:
+                print(Fore.RED + "Failed to add album art:")
+                traceback.print_exc()
 
     except Exception as e:
-        print(Fore.RED + f"Something went wrong!: {e}")  # not very good :(
-        print(traceback.format_exc() + Style.RESET_ALL)  # this gives more info
+        print(Fore.RED + f"Something went wrong!: {e}")
+        print(traceback.format_exc() + Style.RESET_ALL)
         input("Press enter to continue!")
-    os.system('cls')
+        return False
 
-input("Press enter to go through the links thats had issues, exit to exit")
+    return True
 
-for link in errors: # goes through the errors again just in case
-    mp3_download(link)
+def main():
+    while True:
+        links = []  # All links given by the user
+        errors = []  # Links that had issues
+        
+        while True:  # Asks until user has entered all links
+            clear_screen()
+            print("Enter nothing to continue")
+            link = input(Fore.WHITE + "Enter YouTube link: " + Style.RESET_ALL)
+
+            if not link:
+                break
+            elif link in links:
+                print(Fore.YELLOW + "Link has already been given!")
+                time.sleep(0.5)
+            else:
+                links.append(link)
+        
+        for link in links:
+            if not download(link):
+                errors.append(link)
+
+        if errors:
+            input(Fore.RED + "Press enter to retry links that had issues, or exit to exit")
+            for link in errors:
+                download(link)
+            clear_screen()
+            print(Fore.RED + "Links that got errors:")
+            for error_link in errors:
+                print(Fore.RED + error_link)
+        else:
+            input("You can download again or exit")
+
+if __name__ == "__main__":
+    main()
